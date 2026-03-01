@@ -1,0 +1,117 @@
+---
+title: "Untitled"
+author: "Isabel Uribe"
+date: "2025-03-31"
+output: html_document
+---
+
+```{r}
+#Quad-based parameters
+# windows = c(0.7, 2, 5, 10, 20)
+windows = 10
+
+targetmz = seq(300, 1800, by = 50)
+
+#LC parameters
+# FWHM_sec = c(10.2, 5.6, 3.2, 2.1, 2.0, 1.4)
+# experiment = data.frame(SPD = c("015SPD", "030SPD", "060SPD", "100SPD", "200SPD", "500SPD"),
+#                         gradient_min = c(88, 44, 21, 11.5, 5.6, 2.2),
+#                         FWHM = FWHM_sec/60)
+
+#reset for 2d histogram analysis
+FWHM_sec = c(2.0)
+experiment = data.frame(SPD = c("200SPD"),
+                        gradient_min = c(5.6),
+                        FWHM = FWHM_sec/60)
+experiment = experiment %>%
+  mutate(FWHM_norm = FWHM/gradient_min)
+
+targetrt = seq(0.1, 0.8, by = 0.05)
+```
+
+
+```{r}
+#Read in peptide library.
+library(readr)
+library(tidyverse)
+
+proteome = read_tsv("human_proteome_predicted_CCSz_RT.tsv")
+
+#QUAD Filtering
+result_quad = data.frame(matrix(nrow = 0, ncol = 5))
+
+pt_window = c() 
+pt_mz = c()
+
+pt_experiment = c()
+pt_time = c()
+
+pt_no.prec = c()
+
+subset_ids = list()
+
+#Set up progress bar for iterations over quad isolation windows
+n_iter_windows = length(windows)
+pb_windows <- winProgressBar(title = "QUAD isolation window iterations", 
+                           label = "Percentage Completed", min = 0, max = n_iter_windows, 
+                           initial = 0, width = 600L)
+
+for (f in 1:n_iter_windows) {
+  for (g in 1:length(targetmz)) {
+    
+    min_mz = targetmz[g] - (windows[f]/2)
+    max_mz = targetmz[g] + (windows[f]/2)
+    
+    subset_mz = proteome %>%
+      filter(PrecursorMz > min_mz & PrecursorMz < max_mz)
+        
+    for (j in 1:nrow(experiment)) {
+      
+      spd <- experiment[j, 1]
+      gl <- experiment[experiment$SPD == spd, 2]
+      fwhm <- experiment[experiment$SPD == spd, 3]
+      fwhm_norm = fwhm / gl
+      
+      for (k in 1:length(targetrt)) {
+        
+        min_RT = targetrt[k] - (fwhm_norm/2)
+        max_RT = targetrt[k] + (fwhm_norm/2)
+        
+        subset_mz_rt = subset_mz %>%
+          filter(Normalized_RT > min_RT & Normalized_RT < max_RT)
+        
+        no.precursors = nrow(subset_mz_rt)
+        
+        subset_ids <- c(subset_ids, as.character(subset_mz_rt$id))
+        
+        pt_window = append(pt_window, windows[f]) 
+        pt_mz = append(pt_mz, targetmz[g])
+        pt_experiment = append(pt_experiment, spd)
+        pt_time = append(pt_time, targetrt[k])
+        pt_no.prec = append(pt_no.prec, no.precursors)
+        
+      }
+    }
+  }
+  pctg_windows = paste(round(f/n_iter_windows * 100, 0), "% completed")
+  setWinProgressBar(pb_windows, f, label = pctg_windows)
+}
+close(pb_windows)
+
+result_quad = data.frame(cbind(pt_window, as.numeric(pt_mz), pt_experiment, 
+                                    as.numeric(pt_time), as.numeric(pt_no.prec)))
+
+colnames(result_quad) = c("Isolation_Window", "Target_Mz", "Throughput", "Target_RT", "No_of_Precursors")
+
+library(rlist)
+list.save(subset_ids, "quad_ids_10amu_200SPD.rdata")
+
+# write_tsv(result_quad, "chimeric_results_quad.tsv")
+```
+
+```{r}
+test = result_quad %>%
+  group_by(Isolation_Window, Throughput) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+```

@@ -1,0 +1,1507 @@
+---
+title: "Untitled"
+author: "Isabel Uribe"
+date: "2025-03-31"
+output: html_document
+---
+
+#Create heat maps and 2D histogram of properties for all precursors. 
+```{r}
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(viridis)
+library(svglite)
+library(reshape2)
+
+proteome = read_tsv("human_proteome_predicted_CCSz_RT.tsv")
+
+test = proteome %>%
+  filter(Normalized_RT > 0.075 & Normalized_RT < 0.825)
+
+pg <- ggplot_build(s)
+test = head(pg$data[[1]])
+
+test = data.frame(Mode = c("HRIM 1", "HRIM 5", "HRIM 10", "Quad 1.3", "Quad 4", "Quad 20", "Quad-HRIM 1.3-1", "Quad-HRIM 4-1", "Quad-HRIM 20-1", "Quad-HRIM 1.3-5", "Quad-HRIM 4-5", "Quad-HRIM 20-5", "Quad-HRIM 1.3-10", "Quad-HRIM 4-10", "Quad-HRIM 20-10"), TIC_Explained = c(13.27, 7.05, 5.35, 18.70, 8.91, 4.20, 61.99, 40.56, 40.61, 61.69, 41.30, 39.45, 60.58, 40.63, 34.98))
+
+ggplot(test, aes(x = Mode)) +
+  geom_bar()
+```
+
+
+
+#1D histograms of RT, m/z, and CCS/z values.
+```{r}
+########## Precursor RT ##########
+breaks_rt_x = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
+breaks_rt_y = c(0, 8098.7, 16197.4,	24296.1, 32394.8,	40493.5,	48592.2, 56690.9,	64789.6)
+labels_rt_y = c(0, 2, 4, 6, 8, 10, 12, 14, 16)
+
+s = ggplot(proteome, aes(x = Normalized_RT)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  geom_histogram(binwidth = 0.05, fill = "#fde725", color = "white") +
+  scale_y_continuous(expand = c(0, 0), breaks = breaks_rt_y, labels = labels_rt_y, limits = c(0, 64789.6)) +
+  scale_x_continuous(expand = c(0, 0), breaks = breaks_rt_x, labels = breaks_rt_x) +
+  xlab("Normalized Precursor Retention Time") +
+  ylab("% of Peptide Library")
+
+ggsave(s, filename = "1D_hist_RT.svg", dpi = "retina", width = 8, height = 6, units = c("in"))
+
+
+########## Precursor m/z ##########
+breaks_mz_x = c(300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900)
+breaks_mz_y = c(0, 8098.7, 16197.4,	24296.1, 32394.8,	40493.5,	48592.2)
+labels_mz_y = c(0, 2, 4, 6, 8, 10, 12)
+
+a = ggplot(proteome, aes(x = PrecursorMz)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  geom_histogram(binwidth = 50, fill = "#21918c", color = "white") +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 50000), breaks = breaks_mz_y, labels = labels_mz_y) +
+  scale_x_continuous(expand = c(0, 0), breaks = breaks_mz_x, labels = breaks_mz_x) +
+  xlab("Precursor m/z") +
+  ylab("% of Peptide Library")
+
+ggsave(a, filename = "1D_hist_mz.svg", dpi = "retina", width = 8, height = 6, units = c("in"))
+
+
+########## Precursor CCS/z ##########
+breaks_cz_x = c(100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300)
+breaks_cz_y = c(0, 8098.7, 16197.4,	24296.1, 32394.8,	40493.5,	48592.2, 56690.9,	64789.6)
+labels_cz_y = c(0, 2, 4, 6, 8, 10, 12, 14, 16)
+xlabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+m = ggplot(proteome, aes(x = PrecursorCCSz)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  geom_histogram(binwidth = 10, fill = "#440154", color = "white") +
+  scale_y_continuous(expand = c(0, 0), breaks = breaks_cz_y, labels = labels_cz_y, limits = c(0, 64789.6)) +
+  scale_x_continuous(expand = c(0, 0), breaks = breaks_cz_x, labels = breaks_cz_x) +
+  xlab(xlabel) +
+  ylab("% of Peptide Library")
+
+ggsave(m, filename = "1D_hist_ccsz.svg", dpi = "retina", width = 8, height = 6, units = c("in"))
+```
+
+
+
+#2D plots of m/z and ccs/z.
+```{r}
+########## 2D hist of m/z and ccs/z ##########
+breaks_2dh_color = c(0.0001, 8098.7, 16197.4,	24296.1, 32394.8,	40493.5, 48592.2)
+labels_2dh_color = c(1, 2, 4, 6, 8, 10, 12)
+ylabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+ggplot(proteome, aes(x = PrecursorMz, y = PrecursorCCSz)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"),
+        legend.title = element_text(size = "16"), legend.text = element_text(size = "14"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  stat_bin2d(binwidth = c(50, 10)) +
+  scale_fill_viridis(name = "% of Peptide\nLibrary", direction = 1, breaks = breaks_2dh_color, 
+                     labels = labels_2dh_color, limits = c(0.0002, 40493.5)) +
+  xlab("Precursor m/z") +
+  ylab(ylabel) +
+  geom_vline(xintercept = 500) +
+  geom_hline(yintercept = 160, color = "red") +
+  geom_vline(xintercept = 400) +
+  geom_hline(yintercept = 170) +
+  geom_vline(xintercept = 450, color = "red") + 
+  geom_hline(yintercept = 150)
+
+ggsave(s, filename = "2D_hist_mz_vs_ccsz.svg", dpi = "retina", width = 8, height = 6, units = c("in"))
+
+
+########## 2D scatter of precursor charge ##########
+ylabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+prot = proteome %>%
+  mutate(z = as.character(PrecursorCharge))
+
+a = ggplot(prot, aes(x = PrecursorMz, y = PrecursorCCSz, color = z)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"), 
+        legend.title = element_text(size = "16"), legend.text = element_text(size = "14"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  geom_point() +
+  scale_color_viridis(discrete = TRUE, direction = 1, name = "Precursor\nCharge") +
+  xlab("Precursor m/z") +
+  ylab(ylabel)
+  
+ggsave(a, filename = "2D_scatter_z.tiff", dpi = "retina", width = 8, height = 6, units = c("in"))
+
+
+########## 2D scatter of precursor RT ##########
+breaks_2ds = c(0, 0.2, 0.4, 0.6, 0.8, 1)
+ylabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+m = ggplot(prot, aes(x = PrecursorMz, y = PrecursorCCSz, color = Normalized_RT)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text = element_text(size = "14", color = "black"), axis.title = element_text(size = "16"), 
+        axis.ticks = element_line(color = "darkgray"), 
+        legend.title = element_text(size = "16"), legend.text = element_text(size = "14"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  geom_point() +
+  scale_color_viridis(breaks = breaks_2ds, limits = c(0, 1), direction = 1, name = "Normalized\nRetention\nTime") +
+  xlab("Precursor m/z") +
+  ylab(ylabel)
+
+ggsave(m, filename = "2D_scatter_RT.tiff", dpi = "retina", width = 8, height = 6, units = c("in"))
+```
+
+
+
+#Set up results for analysis. 
+```{r}
+library(readr)
+library(tidyverse)
+
+data_quad = read_tsv("chimeric_results_quad.tsv")
+data_hrim = read_tsv("chimeric_results_hrim.tsv")
+data_quim = read_tsv("chimeric_results_quad-hrim.tsv")
+
+data_quad = data_quad %>%
+  filter(Target_RT > 0.05 & Target_RT < 0.85)
+data_hrim = data_hrim %>%
+  filter(Target_RT > 0.05 & Target_RT < 0.85)
+data_quim = data_quim %>%
+  filter(Target_RT > 0.05 & Target_RT < 0.85)
+
+#Add instrument mode column.
+mode_quad = rep("quad", nrow(data_quad))
+data_quad$Instrument_Mode = mode_quad
+
+mode_quim = rep("quad+HRIM", nrow(data_quim))
+data_quim$Instrument_Mode = mode_quim
+
+mode_hrim = rep("HRIM", nrow(data_hrim))
+data_hrim$Instrument_Mode = mode_hrim
+```
+
+
+
+#Find no. of co-isolated precursors based on throughput.
+```{r}
+#Sum across RT dimension.
+chimers1_quad = data_quad %>%
+  group_by(Throughput, Instrument_Mode, Target_Mz, as.character(Isolation_Window)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers1_hrim = data_hrim %>%
+  mutate(Isolation_Window = Peak_Capacity) %>%
+  select(!contains("Peak")) %>%
+  group_by(Throughput, Instrument_Mode, Target_CCSz, as.character(Isolation_Window)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers1_quim = data_quim %>%
+  mutate(Isolation_Window = paste(Isolation_Window, Peak_Capacity, sep = "_")) %>%
+  group_by(Throughput, Instrument_Mode, Target_Mz, Target_CCSz, as.character(Isolation_Window)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+results = rbind(chimers1_quad, chimers1_hrim, chimers1_quim)
+names(results)[names(results) == "as.character(Isolation_Window)"] = "Isolation_Window"
+
+#Create csv for dense regions.
+results_dense = results %>%
+  filter((Instrument_Mode == "quad" & Target_Mz == 450) | 
+         (Instrument_Mode == "HRIM" & Target_CCSz == 160) |
+         (Instrument_Mode == "quad+HRIM" & Target_Mz == 450 & Target_CCSz == 160)) %>%
+  group_by(Instrument_Mode, Throughput, Isolation_Window) %>%
+  summarise(Total.Prec = sum(Total.Prec)) %>%
+  mutate(Experiment = paste(Instrument_Mode, Isolation_Window, sep = "_")) 
+
+results_dense_pivoted = dcast(results_dense, Throughput ~ Experiment, value.var = "Total.Prec")
+write.csv(results_dense_pivoted, "collapsed_dense_results_450_160.csv")
+
+#Create csv for sparse regions.
+results_sparse = results %>%
+  filter((Instrument_Mode == "quad" & Target_Mz == 1000) | 
+         (Instrument_Mode == "HRIM" & Target_CCSz == 250) |
+         (Instrument_Mode == "quad+HRIM" & Target_Mz == 1000 & Target_CCSz == 250)) %>%
+  group_by(Instrument_Mode, Throughput, Isolation_Window) %>%
+  summarise(Total.Prec = sum(Total.Prec)) %>%
+  mutate(Experiment = paste(Instrument_Mode, Isolation_Window, sep = "_")) 
+
+results_sparse_pivoted = dcast(results_sparse, Throughput ~ Experiment, value.var = "Total.Prec")
+write.csv(results_sparse_pivoted, "collapsed_sparse_results.csv")
+```
+
+
+
+#Find no. of co-isolated precursors based on m/z.
+```{r}
+chimers2_quad = data_quad %>%
+  filter(Throughput == "200SPD") %>%
+  group_by(Instrument_Mode, Target_Mz, as.character(Isolation_Window)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors))) 
+
+chimers2_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+  mutate(Isolation_Window = paste(Isolation_Window, Peak_Capacity, sep = "_")) %>%
+  group_by(Instrument_Mode, Target_Mz, as.character(Isolation_Window)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+  
+results_mz = rbind(chimers2_quad, chimers2_quim) 
+names(results_mz)[names(results_mz) == "as.character(Isolation_Window)"] = "Isolation_Window"
+results_mz = results_mz %>%
+  mutate(Experiment = paste(Instrument_Mode, Isolation_Window, sep = "_"))
+
+results_mz_pivoted = dcast(results_mz, Experiment ~ Target_Mz, value.var = "Total.Prec")
+write.csv(results_mz_pivoted, "collapsed_mz_results_200SPD.csv")
+```
+
+
+
+#Find no. of co-isolated precursors based on CCS/z.
+```{r}
+chimers3_hrim = data_hrim %>%
+  filter(Throughput == "200SPD") %>%
+  group_by(Instrument_Mode, Target_CCSz, as.character(Peak_Capacity)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers3_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+  mutate(Peak_Capacity = paste(Isolation_Window, Peak_Capacity, sep = "_")) %>%
+  group_by(Instrument_Mode, Target_CCSz, as.character(Peak_Capacity)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+results_ccsz = rbind(chimers3_hrim, chimers3_quim)
+names(results_ccsz)[names(results_ccsz) == "as.character(Peak_Capacity)"] = "Peak_Capacity"
+results_ccsz = results_ccsz %>%
+  mutate(Experiment = paste(Instrument_Mode, Peak_Capacity, sep = "_"))
+
+results_ccsz_pivoted = dcast(results_ccsz, Experiment ~ Target_CCSz, value.var = "Total.Prec")
+write.csv(results_ccsz_pivoted, "collapsed_ccsz_results_200SPD.csv")
+```
+
+
+
+
+#Contour plots of no. of precursors with m/z and RT (quad and quad+HRIM).
+```{r}
+chimers4_quad = data_quad %>%
+  filter(Throughput == "200SPD") %>%
+  filter(Isolation_Window == "10") %>%
+  group_by(Target_Mz, Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+chimers4_quad_pivoted = dcast(chimers4_quad, Target_Mz ~ Target_RT, value.var = "Total.Prec")
+mztarg = chimers4_quad_pivoted$Target_Mz
+quad = chimers4_quad_pivoted[,2:16]
+rownames(quad) = mztarg
+write.csv(quad, "contour_mz-rt_quad.csv")
+
+chimers4_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+    filter(Isolation_Window == "25" & Peak_Capacity == "1") %>%
+    group_by(Target_Mz, Target_RT) %>%
+    summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+chimers4_quim_pivoted = dcast(chimers4_quim, Target_Mz ~ Target_RT, value.var = "Total.Prec")
+mztarg = chimers4_quim_pivoted$Target_Mz
+quim = chimers4_quim_pivoted[,2:16]
+rttarg = colnames(quim)
+rownames(quim) = mztarg
+colnames(quim) = rttarg
+write.csv(quim, "contour_mz-rt_quad-HRIM.csv")
+
+#contour plot for quad data
+# png("contour_mz-rt_quad.png", res = 1200, height = 6, width = 8, units = "in")
+
+tiff("contour_mz-rt_quad.tiff", res = 600, height = 6, width = 8, units = "in")
+
+quad = read.csv("contour_mz-rt_quad.csv", row.names = 1)
+colnames(quad) = rttarg
+quad = as.matrix(quad)
+pctlib = apply(quad, c(1,2), function(x) ((x/275298)*100))
+pctlib[pctlib == 0] = 0.0001
+log_pctlib_quad = log10(pctlib)
+
+x = seq(300, 1800, by = 50)
+y = seq(0.1, 0.8, by = 0.05)
+
+zrange <- range(log_pctlib_quad, na.rm = TRUE)
+levels <- seq(zrange[1], zrange[2], length.out = 13)
+
+log_breaks = c(-4, -3.75, -3.5, -3.25, -3, -2.75, -2.5, -2.25, -2, -1.75, -1.5)
+linear_labels = c(0, 0.0002, 0.0003, 0.0006, 0.001, 0.002, 0.003, 0.006, 0.01, 0.02, 0.03)
+ylabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+
+filled.contour(
+  x, y, log_pctlib_quad,
+  color.palette = viridis,
+  levels = levels,
+  plot.axes = {
+    axis(1)
+    axis(2)
+    },
+  plot.title = title(xlab = "Target m/z", ylab = "Target RT"),
+  key.title = title(main = "% of\nPeptide\nLibrary", cex.main = 0.9),
+  key.axes = {
+      axis(4, at = log_breaks, labels = sprintf("%.4f", linear_labels))
+    }
+  )
+
+while (!is.null(dev.list()))
+dev.off()
+
+plot.new()
+
+
+#contour plot for quad-hrim data
+# png("contour_mz-rt_quad-hrim.png", res = 1200, height = 6, width = 8, units = "in")
+
+tiff("contour_mz-rt_quad-hrim.tiff", res = 600, height = 6, width = 8, units = "in")
+
+quim = read.csv("contour_mz-rt_quad-HRIM.csv", row.names = 1)
+colnames(quim) = rttarg
+pctlib = apply(quim, c(1,2), function(x) ((x/275298)*100))
+pctlib[pctlib == 0] = 0.0001
+log_pctlib_quim = log10(pctlib)
+
+x = seq(300, 1800, by = 50)
+y = seq(0.1, 0.8, by = 0.05)
+
+log_breaks = c(-4, -3.75, -3.5, -3.25, -3, -2.75, -2.5, -2.25, -2, -1.75, -1.5)
+linear_labels = c(0, 0.0002, 0.0003, 0.0006, 0.001, 0.002, 0.003, 0.006, 0.01, 0.02, 0.03)
+ylabel = expression(paste("Precursor CCS/z (", Å^2, "/z)"))
+
+filled.contour(
+  x, y, log_pctlib_quim,
+  color.palette = viridis,
+  levels = levels,
+  plot.axes = {
+    axis(1)
+    axis(2)
+    },
+  plot.title = title(xlab = "Target m/z", ylab = "Target RT"),
+  key.title = title(main = "% of\nPeptide\nLibrary", cex.main = 0.9),
+  key.axes = {
+      axis(4, at = log_breaks, labels = sprintf("%.4f", linear_labels))
+    }
+  )
+
+while (!is.null(dev.list()))
+dev.off()
+
+plot.new()
+
+#saving in case we want to add the contour lines on top. Place within fill.contour
+# plot.axes = {
+#                  axis(1)
+#                  axis(2)
+#                  contour(x, y, test2, add = TRUE, 
+#                          col = "black", lwd = 2, drawlabels = FALSE, nlevels = 12)
+#                  }
+```
+
+
+
+#Contour plots of no. of precursors with ccs/z and RT (HRIM and quad+HRIM).
+```{r}
+chimers5_hrim = data_hrim %>%
+  filter(Throughput == "200SPD") %>%
+  filter(Peak_Capacity == "1") %>%
+  group_by(Target_CCSz, Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+chimers5_hrim_pivoted = dcast(chimers5_hrim, Target_CCSz ~ Target_RT, value.var = "Total.Prec")
+ccsztarg = chimers5_hrim_pivoted$Target_CCSz
+hrim = chimers5_hrim_pivoted[,2:16]
+rownames(hrim) = ccsztarg
+write.csv(hrim, "contour_ccsz-rt_hrim.csv")
+
+chimers5_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+    filter(Isolation_Window == "25" & Peak_Capacity == "1") %>%
+    group_by(Target_CCSz, Target_RT) %>%
+    summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+chimers5_quim_pivoted = dcast(chimers5_quim, Target_CCSz ~ Target_RT, value.var = "Total.Prec")
+ccsztarg = chimers5_quim_pivoted$Target_CCSz
+quim = chimers5_quim_pivoted[,2:16]
+rttarg = colnames(quim)
+rownames(quim) = ccsztarg
+colnames(quim) = rttarg
+write.csv(quim, "contour_ccsz-rt_quad-HRIM.csv")
+
+#contour plot for hrim data
+# png("contour_mz-rt_quad.png", res = 1200, height = 6, width = 8, units = "in")
+plot.new()
+
+tiff("contour_ccsz-rt_hrim.tiff", res = 600, height = 6, width = 8, units = "in")
+
+hrim = read.csv("contour_ccsz-rt_hrim.csv", row.names = 1)
+colnames(hrim) = rttarg
+hrim = as.matrix(hrim)
+pctlib = apply(hrim, c(1,2), function(x) ((x/275298)*100))
+pctlib[pctlib == 0] = 0.0001
+log_pctlib_hrim = log10(pctlib)
+
+x = seq(100, 300, by = 10)
+y = seq(0.1, 0.8, by = 0.05)
+
+log_breaks = c(-4, -3.75, -3.5, -3.25, -3, -2.75, -2.5, -2.25, -2, -1.75, -1.5)
+linear_labels = c(0, 0.0002, 0.0003, 0.0006, 0.001, 0.002, 0.003, 0.006, 0.01, 0.02, 0.03)
+xlabel = expression(paste("Target CCS/z (", Å^2, "/z)"))
+
+filled.contour(
+  x, y, log_pctlib_hrim,
+  color.palette = viridis,
+  levels = levels,
+  plot.axes = {
+    axis(1)
+    axis(2)
+    },
+  plot.title = title(xlab = xlabel, ylab = "Target RT"),
+  key.title = title(main = "% of\nPeptide\nLibrary", cex.main = 0.9),
+  key.axes = {
+      axis(4, at = log_breaks, labels = sprintf("%.4f", linear_labels))
+    }
+  )
+
+while (!is.null(dev.list()))
+dev.off()
+
+
+#contour plot for quad-hrim data
+# png("contour_mz-rt_quad-hrim.png", res = 1200, height = 6, width = 8, units = "in")
+# 
+# tiff("contour_ccsz-rt_quad-hrim.tiff", res = 600, height = 6, width = 8, units = "in")
+# 
+# quim = read.csv("contour_ccsz-rt_quad-HRIM.csv", row.names = 1)
+# colnames(quim) = rttarg
+# test = as.matrix(quim)
+# test2 = apply(test, c(1,2), function(x) ((x/404935)*100))
+# 
+# x = seq(100, 300, by = 10)
+# y = seq(0.1, 0.8, by = 0.05)
+# 
+# filled.contour(x, y, test2,
+#                color.palette = viridis, nlevels = 12,
+#                xlim = c(130, 300),
+#                zlim = c(0, 0.0275),
+#                key.axes = axis(4, seq(0, 0.0275, by = 0.0025)),
+#                plot.title = title(xlab = "Target CCS/z", ylab = "Target RT"),
+#                key.title = title(main = "% of\nPeptide\nLibrary", cex.main = 0.9))
+# 
+# while (!is.null(dev.list()))
+# dev.off()
+```
+
+
+
+#Create scatter plot for Quad 10 amu.
+```{r}
+library(rlist)
+ids = list.load("quad_ids_10amu_200SPD.rdata")
+ids_10amu = data.frame(unlist(ids))
+colnames(ids_10amu) = "id"
+
+proteome = proteome %>%
+  mutate(id = as.character(id))
+
+prot_10amu = inner_join(proteome, ids_10amu, by = "id")
+
+prot_10amu_300 = prot_10amu %>%
+  filter(PrecursorMz > 295 & PrecursorMz < 305) %>%
+  mutate(Target_Mz = 300)
+prot_10amu_350 = prot_10amu %>%
+  filter(PrecursorMz > 345 & PrecursorMz < 355) %>%
+  mutate(Target_Mz = 350)
+prot_10amu_400 = prot_10amu %>%
+  filter(PrecursorMz > 395 & PrecursorMz < 405) %>%
+  mutate(Target_Mz = 400)
+prot_10amu_450 = prot_10amu %>%
+  filter(PrecursorMz > 445 & PrecursorMz < 455) %>%
+  mutate(Target_Mz = 450)
+prot_10amu_500 = prot_10amu %>%
+  filter(PrecursorMz > 495 & PrecursorMz < 505) %>%
+  mutate(Target_Mz = 500)
+prot_10amu_550 = prot_10amu %>%
+  filter(PrecursorMz > 545 & PrecursorMz < 555) %>%
+  mutate(Target_Mz = 550)
+prot_10amu_600 = prot_10amu %>%
+  filter(PrecursorMz > 595 & PrecursorMz < 605) %>%
+  mutate(Target_Mz = 600)
+prot_10amu_650 = prot_10amu %>%
+  filter(PrecursorMz > 645 & PrecursorMz < 655) %>%
+  mutate(Target_Mz = 650)
+prot_10amu_700 = prot_10amu %>%
+  filter(PrecursorMz > 695 & PrecursorMz < 702.5) %>%
+  mutate(Target_Mz = 700)
+prot_10amu_750 = prot_10amu %>%
+  filter(PrecursorMz > 745 & PrecursorMz < 755) %>%
+  mutate(Target_Mz = 750)
+prot_10amu_800 = prot_10amu %>%
+  filter(PrecursorMz > 795 & PrecursorMz < 805) %>%
+  mutate(Target_Mz = 800)
+prot_10amu_850 = prot_10amu %>%
+  filter(PrecursorMz > 845 & PrecursorMz < 855) %>%
+  mutate(Target_Mz = 850)
+prot_10amu_900 = prot_10amu %>%
+  filter(PrecursorMz > 895 & PrecursorMz < 905) %>%
+  mutate(Target_Mz = 900)
+prot_10amu_950 = prot_10amu %>%
+  filter(PrecursorMz > 945 & PrecursorMz < 955) %>%
+  mutate(Target_Mz = 950)
+prot_10amu_1000 = prot_10amu %>%
+  filter(PrecursorMz > 995 & PrecursorMz < 1005) %>%
+  mutate(Target_Mz = 1000)
+prot_10amu_1050 = prot_10amu %>%
+  filter(PrecursorMz > 1045 & PrecursorMz < 1055) %>%
+  mutate(Target_Mz = 1050)
+prot_10amu_1100 = prot_10amu %>%
+  filter(PrecursorMz > 1097.5 & PrecursorMz < 1102.5) %>%
+  mutate(Target_Mz = 1100)
+prot_10amu_1150 = prot_10amu %>%
+  filter(PrecursorMz > 1145 & PrecursorMz < 1155) %>%
+  mutate(Target_Mz = 1150)
+prot_10amu_1200 = prot_10amu %>%
+  filter(PrecursorMz > 1195 & PrecursorMz < 1205) %>%
+  mutate(Target_Mz = 1200)
+prot_10amu_1250 = prot_10amu %>%
+  filter(PrecursorMz > 1245 & PrecursorMz < 1255) %>%
+  mutate(Target_Mz = 1250)
+prot_10amu_1300 = prot_10amu %>%
+  filter(PrecursorMz > 1295 & PrecursorMz < 1305) %>%
+  mutate(Target_Mz = 1300)
+prot_10amu_1350 = prot_10amu %>%
+  filter(PrecursorMz > 1345 & PrecursorMz < 1355) %>%
+  mutate(Target_Mz = 1350)
+prot_10amu_1400 = prot_10amu %>%
+  filter(PrecursorMz > 1395 & PrecursorMz < 1405) %>%
+  mutate(Target_Mz = 1400)
+prot_10amu_1450 = prot_10amu %>%
+  filter(PrecursorMz > 1445 & PrecursorMz < 1455) %>%
+  mutate(Target_Mz = 1450)
+prot_10amu_1500 = prot_10amu %>%
+  filter(PrecursorMz > 1495 & PrecursorMz < 1505) %>%
+  mutate(Target_Mz = 1500)
+prot_10amu_1550 = prot_10amu %>%
+  filter(PrecursorMz > 1545 & PrecursorMz < 1555) %>%
+  mutate(Target_Mz = 1550)
+prot_10amu_1600 = prot_10amu %>%
+  filter(PrecursorMz > 1595 & PrecursorMz < 1605) %>%
+  mutate(Target_Mz = 1600)
+prot_10amu_1650 = prot_10amu %>%
+  filter(PrecursorMz > 1645 & PrecursorMz < 1655) %>%
+  mutate(Target_Mz = 1650)
+prot_10amu_1700 = prot_10amu %>%
+  filter(PrecursorMz > 1695 & PrecursorMz < 1705) %>%
+  mutate(Target_Mz = 1700)
+prot_10amu_1750 = prot_10amu %>%
+  filter(PrecursorMz > 1745 & PrecursorMz < 1755) %>%
+  mutate(Target_Mz = 1750)
+prot_10amu_1800 = prot_10amu %>%
+  filter(PrecursorMz > 1795 & PrecursorMz < 1805) %>%
+  mutate(Target_Mz = 1800)
+
+prot_10amu = rbind(prot_10amu_300, prot_10amu_350, prot_10amu_400, prot_10amu_450, prot_10amu_500, prot_10amu_550, prot_10amu_600, prot_10amu_650, prot_10amu_700, prot_10amu_750, prot_10amu_800, prot_10amu_850, prot_10amu_900, prot_10amu_950, prot_10amu_1000, prot_10amu_1050, prot_10amu_1100, prot_10amu_1150, prot_10amu_1200, prot_10amu_1250, prot_10amu_1300, prot_10amu_1350, prot_10amu_1400, prot_10amu_1450, prot_10amu_1500, prot_10amu_1550, prot_10amu_1600, prot_10amu_1650, prot_10amu_1700, prot_10amu_1750, prot_10amu_1800)
+
+# write.csv(prot_10amu, "prot_10amu.csv")
+```
+
+```{r}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+grid.newpage()
+
+style = theme_classic()
+theme_set(style)
+
+breaks_x = c(300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800)
+breaks_y = c(100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320)
+  
+q = ggplot(prot_10amu, aes(x = PrecursorMz, y = PrecursorCCSz)) +
+  geom_point(color = "black") +
+  scale_x_continuous(breaks = breaks_x, labels = breaks_x, limits = c(300, 1800)) +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  theme(plot.margin=unit(c(-0.5,1,1,1), "cm"))
+ggsave(q, filename = "quad_scatter_plot.svg", bg = "transparent", width = 8, height = 6.1, units = c("in"))
+
+q.counts = prot_10amu %>%
+  group_by(Target_Mz) %>%
+  summarise(Total.Prec = n()) %>%
+  mutate(pct.lib = ((Total.Prec/275298)*100))
+
+color_breaks = c(0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
+
+qx = ggplot(q.counts, aes(x = Target_Mz, y = 1, fill = pct.lib)) + 
+  geom_tile() +
+  scale_x_continuous(breaks = breaks_x, labels = breaks_x, limits = c(300, 1800)) +
+  scale_fill_viridis(name = "% of Peptide Library", direction = 1, 
+                     breaks = color_breaks, 
+                     labels = color_breaks, 
+                     limits = c(0, 0.3)) + 
+  theme(legend.position="top",
+        axis.text.y=element_text(color="black"),
+        axis.ticks.y=element_line(color="black"),
+        axis.text.x=element_text(color = "black"),
+        axis.ticks.x=element_line(color = "black"),
+        plot.margin=unit(c(1,1,-0.5, 1), "cm")) 
+ggsave(qx, filename = "quad_heatmap.svg", bg = "transparent", width = 8, height = 6, units = c("in"))
+
+# breaks = c(1, 200, 400, 600, 800),
+#                      labels = c(1, 200, 400, 600, 800),
+#                      limits = c(1, 800)
+  
+# grid.arrange(h, hy, ncol = 2, nrow = 1)
+# 
+# layt = grid.layout(nrow = 2, ncol = 1, heights = c(3/10,7/10), widths = 1, default.units = c("null", "null"))
+# grid.show.layout(layt)
+# 
+# grid.newpage()
+# pushViewport(viewport(layout=layt))
+# print(q,vp=viewport(layout.pos.row=2,layout.pos.col=1))
+# print(qx,vp=viewport(layout.pos.row=1,layout.pos.col=1))
+# 
+# grid.newpage()
+# 
+# pg <- ggplot_build(qx)
+# test = head(pg$data[[1]])
+
+# ggsave(y, filename = "2D_hist_target-mz_vs_prec-ccsz.svg", dpi = "retina")
+```
+
+#Create scatter plot for M/z values from Quad 25 amu + HRIM 1%.
+```{r}
+library(rlist)
+ids = list.load("quad-hrim_ids_25amu-1pct_200SPD.rdata")
+ids_25amu = data.frame(unlist(ids))
+colnames(ids_25amu) = "id"
+
+proteome = proteome %>%
+  mutate(id = as.character(id))
+
+prot_25amu = inner_join(proteome, ids_25amu, by = "id")
+
+prot_25amu_300 = prot_25amu %>%
+  filter(PrecursorMz > 287.5 & PrecursorMz < 312.5) %>%
+  mutate(Target_Mz = 300)
+prot_25amu_350 = prot_25amu %>%
+  filter(PrecursorMz > 337.5 & PrecursorMz < 362.5) %>%
+  mutate(Target_Mz = 350)
+prot_25amu_400 = prot_25amu %>%
+  filter(PrecursorMz > 387.5 & PrecursorMz < 412.5) %>%
+  mutate(Target_Mz = 400)
+prot_25amu_450 = prot_25amu %>%
+  filter(PrecursorMz > 437.5 & PrecursorMz < 462.5) %>%
+  mutate(Target_Mz = 450)
+prot_25amu_500 = prot_25amu %>%
+  filter(PrecursorMz > 487.5 & PrecursorMz < 512.5) %>%
+  mutate(Target_Mz = 500)
+prot_25amu_550 = prot_25amu %>%
+  filter(PrecursorMz > 537.5 & PrecursorMz < 562.5) %>%
+  mutate(Target_Mz = 550)
+prot_25amu_600 = prot_25amu %>%
+  filter(PrecursorMz > 587.5 & PrecursorMz < 612.5) %>%
+  mutate(Target_Mz = 600)
+prot_25amu_650 = prot_25amu %>%
+  filter(PrecursorMz > 637.5 & PrecursorMz < 662.5) %>%
+  mutate(Target_Mz = 650)
+prot_25amu_700 = prot_25amu %>%
+  filter(PrecursorMz > 687.5 & PrecursorMz < 712.5) %>%
+  mutate(Target_Mz = 700)
+prot_25amu_750 = prot_25amu %>%
+  filter(PrecursorMz > 737.5 & PrecursorMz < 762.5) %>%
+  mutate(Target_Mz = 750)
+prot_25amu_800 = prot_25amu %>%
+  filter(PrecursorMz > 787.5 & PrecursorMz < 812.5) %>%
+  mutate(Target_Mz = 800)
+prot_25amu_850 = prot_25amu %>%
+  filter(PrecursorMz > 837.5 & PrecursorMz < 862.5) %>%
+  mutate(Target_Mz = 850)
+prot_25amu_900 = prot_25amu %>%
+  filter(PrecursorMz > 887.5 & PrecursorMz < 912.5) %>%
+  mutate(Target_Mz = 900)
+prot_25amu_950 = prot_25amu %>%
+  filter(PrecursorMz > 937.5 & PrecursorMz < 962.5) %>%
+  mutate(Target_Mz = 950)
+prot_25amu_1000 = prot_25amu %>%
+  filter(PrecursorMz > 987.5 & PrecursorMz < 1012.5) %>%
+  mutate(Target_Mz = 1000)
+prot_25amu_1050 = prot_25amu %>%
+  filter(PrecursorMz > 1037.5 & PrecursorMz < 1062.5) %>%
+  mutate(Target_Mz = 1050)
+prot_25amu_1100 = prot_25amu %>%
+  filter(PrecursorMz > 1087.5 & PrecursorMz < 1112.5) %>%
+  mutate(Target_Mz = 1100)
+prot_25amu_1150 = prot_25amu %>%
+  filter(PrecursorMz > 1137.5 & PrecursorMz < 1162.5) %>%
+  mutate(Target_Mz = 1150)
+prot_25amu_1200 = prot_25amu %>%
+  filter(PrecursorMz > 1187.5 & PrecursorMz < 1212.5) %>%
+  mutate(Target_Mz = 1200)
+prot_25amu_1250 = prot_25amu %>%
+  filter(PrecursorMz > 1237.5 & PrecursorMz < 1262.5) %>%
+  mutate(Target_Mz = 1250)
+prot_25amu_1300 = prot_25amu %>%
+  filter(PrecursorMz > 1287.5 & PrecursorMz < 1312.5) %>%
+  mutate(Target_Mz = 1300)
+prot_25amu_1350 = prot_25amu %>%
+  filter(PrecursorMz > 1337.5 & PrecursorMz < 1362.5) %>%
+  mutate(Target_Mz = 1350)
+prot_25amu_1400 = prot_25amu %>%
+  filter(PrecursorMz > 1387.5 & PrecursorMz < 1412.5) %>%
+  mutate(Target_Mz = 1400)
+prot_25amu_1450 = prot_25amu %>%
+  filter(PrecursorMz > 1437.5 & PrecursorMz < 1462.5) %>%
+  mutate(Target_Mz = 1450)
+prot_25amu_1500 = prot_25amu %>%
+  filter(PrecursorMz > 1487.5 & PrecursorMz < 1512.5) %>%
+  mutate(Target_Mz = 1500)
+prot_25amu_1550 = prot_25amu %>%
+  filter(PrecursorMz > 1537.5 & PrecursorMz < 1562.5) %>%
+  mutate(Target_Mz = 1550)
+prot_25amu_1600 = prot_25amu %>%
+  filter(PrecursorMz > 1587.5 & PrecursorMz < 1612.5) %>%
+  mutate(Target_Mz = 1600)
+prot_25amu_1650 = prot_25amu %>%
+  filter(PrecursorMz > 1637.5 & PrecursorMz < 1662.5) %>%
+  mutate(Target_Mz = 1650)
+prot_25amu_1700 = prot_25amu %>%
+  filter(PrecursorMz > 1687.5 & PrecursorMz < 1712.5) %>%
+  mutate(Target_Mz = 1700)
+prot_25amu_1750 = prot_25amu %>%
+  filter(PrecursorMz > 1737.5 & PrecursorMz < 1762.5) %>%
+  mutate(Target_Mz = 1750)
+prot_25amu_1800 = prot_25amu %>%
+  filter(PrecursorMz > 1787.5 & PrecursorMz < 1812.5) %>%
+  mutate(Target_Mz = 1800)
+
+prot_25amu = rbind(prot_25amu_300, prot_25amu_350, prot_25amu_400, prot_25amu_450, prot_25amu_500, prot_25amu_550, prot_25amu_600, prot_25amu_650, prot_25amu_700, prot_25amu_750, prot_25amu_800, prot_25amu_850, prot_25amu_900, prot_25amu_950, prot_25amu_1000, prot_25amu_1050, prot_25amu_1100, prot_25amu_1150, prot_25amu_1200, prot_25amu_1250, prot_25amu_1300, prot_25amu_1350, prot_25amu_1400, prot_25amu_1450, prot_25amu_1500, prot_25amu_1550, prot_25amu_1600, prot_25amu_1650, prot_25amu_1700, prot_25amu_1750, prot_25amu_1800)
+
+# write.csv(prot_10amu, "prot_10amu.csv")
+```
+
+```{r}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+grid.newpage()
+
+style = theme_classic()
+theme_set(style)
+
+breaks_x = c(300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800)
+breaks_y = c(100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320)
+  
+q = ggplot(prot_25amu, aes(x = PrecursorMz, y = PrecursorCCSz)) +
+  geom_point() +
+  scale_x_continuous(breaks = breaks_x, labels = breaks_x, limits = c(300, 1800)) +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  theme(plot.margin=unit(c(-0.5,1,1,1), "cm"))
+ggsave(q, filename = "quad-hrim_scatter.svg", bg = "transparent", width = 8, height = 6, units = c("in"))  
+
+q.counts = prot_25amu %>%
+  group_by(Target_Mz) %>%
+  summarise(Total.Prec = n()) %>%
+  mutate(pct.lib = ((Total.Prec/275298)*100))
+
+color_breaks = c(0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
+
+qx = ggplot(q.counts, aes(x = Target_Mz, y = 1, fill = pct.lib)) + 
+  geom_tile() +
+  scale_x_continuous(breaks = breaks_x, labels = breaks_x, limits = c(300, 1800)) +
+  scale_fill_viridis(name = "% of Peptide Library", direction = 1, 
+                     breaks = color_breaks, 
+                     labels = color_breaks, 
+                     limits = c(0, 0.3)) + 
+  theme(legend.position="top",
+        axis.title=element_text(color="white"),
+        axis.text.y=element_text(color="black"),
+        axis.ticks.y=element_line(color="black"),
+        axis.text.x=element_text("black"),
+        axis.ticks.x=element_line("black"),
+        plot.margin=unit(c(1,1,-0.5, 1), "cm")) 
+ggsave(qx, filename = "quad-hrim_heatmap.svg", bg = "transparent", width = 8, height = 6, units = c("in"))
+
+  
+# grid.arrange(h, hy, ncol = 2, nrow = 1)
+# 
+# layt = grid.layout(nrow = 2, ncol = 1, heights = c(3/10,7/10), widths = 1, default.units = c("null", "null"))
+# grid.show.layout(layt)
+# 
+# grid.newpage()
+# pushViewport(viewport(layout=layt))
+# print(q,vp=viewport(layout.pos.row=2,layout.pos.col=1))
+# print(qx,vp=viewport(layout.pos.row=1,layout.pos.col=1))
+# 
+# pg <- ggplot_build(qx)
+# test = head(pg$data[[1]]) 
+# 
+# ggsave(y, filename = "2D_hist_target-mz_vs_prec-ccsz.svg", dpi = "retina")
+```
+
+#Create scatter plot for HRIM 1%.
+```{r}
+library(rlist)
+ids = list.load("hrim_ids_1pct_200SPD.rdata")
+ids_1pct = data.frame(unlist(ids))
+colnames(ids_1pct) = "id"
+
+proteome = proteome %>%
+  mutate(id = as.character(id))
+
+prot_1pct = inner_join(proteome, ids_1pct, by = "id")
+
+prot_1pct_100 = prot_1pct %>%
+  filter(PrecursorCCSz > 99.5 & PrecursorCCSz < 100.5) %>%
+  mutate(Target_CCSz = 100)
+prot_1pct_110 = prot_1pct %>%
+  filter(PrecursorCCSz > 109.5 & PrecursorCCSz < 110.5) %>%
+  mutate(Target_CCSz = 110)
+prot_1pct_120 = prot_1pct %>%
+  filter(PrecursorCCSz > 119.5 & PrecursorCCSz < 120.5) %>%
+  mutate(Target_CCSz = 120)
+prot_1pct_130 = prot_1pct %>%
+  filter(PrecursorCCSz > 129.5 & PrecursorCCSz < 130.5) %>%
+  mutate(Target_CCSz = 130)
+prot_1pct_140 = prot_1pct %>%
+  filter(PrecursorCCSz > 139.5 & PrecursorCCSz < 140.5) %>%
+  mutate(Target_CCSz = 140)
+prot_1pct_150 = prot_1pct %>%
+  filter(PrecursorCCSz > 149.5 & PrecursorCCSz < 150.5) %>%
+  mutate(Target_CCSz = 150)
+prot_1pct_160 = prot_1pct %>%
+  filter(PrecursorCCSz > 159.5 & PrecursorCCSz < 160.5) %>%
+  mutate(Target_CCSz = 160)
+prot_1pct_170 = prot_1pct %>%
+  filter(PrecursorCCSz > 169.5 & PrecursorCCSz < 170.5) %>%
+  mutate(Target_CCSz = 170)
+prot_1pct_180 = prot_1pct %>%
+  filter(PrecursorCCSz > 179.5 & PrecursorCCSz < 180.5) %>%
+  mutate(Target_CCSz = 180)
+prot_1pct_190 = prot_1pct %>%
+  filter(PrecursorCCSz > 189.5 & PrecursorCCSz < 190.5) %>%
+  mutate(Target_CCSz = 190)
+prot_1pct_200 = prot_1pct %>%
+  filter(PrecursorCCSz > 199.5 & PrecursorCCSz < 200.5) %>%
+  mutate(Target_CCSz = 200)
+prot_1pct_210 = prot_1pct %>%
+  filter(PrecursorCCSz > 209.5 & PrecursorCCSz < 210.5) %>%
+  mutate(Target_CCSz = 210)
+prot_1pct_220 = prot_1pct %>%
+  filter(PrecursorCCSz > 219.5 & PrecursorCCSz < 220.5) %>%
+  mutate(Target_CCSz = 220)
+prot_1pct_230 = prot_1pct %>%
+  filter(PrecursorCCSz > 229.5 & PrecursorCCSz < 230.5) %>%
+  mutate(Target_CCSz = 230)
+prot_1pct_240 = prot_1pct %>%
+  filter(PrecursorCCSz > 239.5 & PrecursorCCSz < 240.5) %>%
+  mutate(Target_CCSz = 240)
+prot_1pct_250 = prot_1pct %>%
+  filter(PrecursorCCSz > 249.5 & PrecursorCCSz < 250.5) %>%
+  mutate(Target_CCSz = 250)
+prot_1pct_260 = prot_1pct %>%
+  filter(PrecursorCCSz > 259.5 & PrecursorCCSz < 260.5) %>%
+  mutate(Target_CCSz = 260)
+prot_1pct_270 = prot_1pct %>%
+  filter(PrecursorCCSz > 269.5 & PrecursorCCSz < 270.5) %>%
+  mutate(Target_CCSz = 270)
+prot_1pct_280 = prot_1pct %>%
+  filter(PrecursorCCSz > 279.5 & PrecursorCCSz < 280.5) %>%
+  mutate(Target_CCSz = 280)
+prot_1pct_290 = prot_1pct %>%
+  filter(PrecursorCCSz > 289.5 & PrecursorCCSz < 290.5) %>%
+  mutate(Target_CCSz = 290)
+prot_1pct_300 = prot_1pct %>%
+  filter(PrecursorCCSz > 299.5 & PrecursorCCSz < 300.5) %>%
+  mutate(Target_CCSz = 300)
+
+prot_1pct = rbind(prot_1pct_100, prot_1pct_110, prot_1pct_120, prot_1pct_130, prot_1pct_140, prot_1pct_150, prot_1pct_160, prot_1pct_170, prot_1pct_180, prot_1pct_190, prot_1pct_200, prot_1pct_210, prot_1pct_220, prot_1pct_230, prot_1pct_240, prot_1pct_250, prot_1pct_260, prot_1pct_270, prot_1pct_280, prot_1pct_290, prot_1pct_300)
+
+# write.csv(prot_1pct, "prot_1pct_200SPD.csv")
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+grid.newpage()
+
+style = theme_classic()
+theme_set(style)
+
+breaks_x = c(300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800)
+breaks_y = c(100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320)
+  
+h = ggplot(prot_1pct, aes(x = PrecursorMz, y = PrecursorCCSz)) +
+  geom_point() +
+  scale_x_continuous(breaks = breaks_x, labels = breaks_x, limits = c(300, 1800)) +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  theme(plot.margin=unit(c(1,1,-0.5, 1), "cm"))
+ggsave(h, filename = "hrim_scatter.svg", bg = "transparent", width = 8, height = 6, units = c("in")) 
+
+h.counts = prot_1pct %>%
+  group_by(Target_CCSz) %>%
+  summarise(Total.Prec = n()) %>%
+  mutate(pct.lib = ((Total.Prec/275298)*100))
+
+color_breaks = c(0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
+
+hy = ggplot(h.counts, aes(x = 1, y = Target_CCSz, fill = pct.lib)) + 
+  geom_tile() +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  scale_fill_viridis(name = "Total.Prec", direction = 1, 
+                     breaks = color_breaks, 
+                     labels = color_breaks, 
+                     limits = c(0, 0.3)) + 
+  theme(legend.position="top",
+        axis.title=element_text(color="white"),
+        axis.text.x=element_text(color="black"),
+        axis.ticks.x=element_line(color="black"),
+        axis.text.y=element_text(color="black"),
+        axis.ticks.y=element_line(color="black"),
+        plot.margin=unit(c(1,1,-0.5, 1), "cm")) 
+ggsave(hy, filename = "hrim_heatmap.svg", bg = "transparent", width = 8, height = 6, units = c("in"))
+  
+# grid.arrange(h, hy, ncol = 2, nrow = 1)
+# 
+# layt = grid.layout(nrow = 1, ncol = 2, heights = 1, widths = c(6/8,2/8),default.units = c("null", "null"))
+# grid.show.layout(layt)
+# 
+# grid.newpage()
+# pushViewport(viewport(layout=layt))
+# print(h,vp=viewport(layout.pos.row=1,layout.pos.col=1))
+# print(hy,vp=viewport(layout.pos.row=1,layout.pos.col=2))
+# 
+# pg <- ggplot_build(hy)
+# test = head(pg$data[[1]])
+# 
+# ggsave(y, filename = "2D_hist_target-mz_vs_prec-ccsz.svg", dpi = "retina")
+```
+
+#Create scatter plot for CCS/z values from Quad 25 amu + HRIM 1%.
+```{r}
+library(rlist)
+ids = list.load("quad-hrim_ids_25amu-1pct_200SPD.rdata")
+ids_1pct = data.frame(unlist(ids))
+colnames(ids_1pct) = "id"
+
+proteome = proteome %>%
+  mutate(id = as.character(id))
+
+prot_1pct = inner_join(proteome, ids_1pct, by = "id")
+
+prot_1pct_100 = prot_1pct %>%
+  filter(PrecursorCCSz > 99.5 & PrecursorCCSz < 100.5) %>%
+  mutate(Target_CCSz = 100)
+prot_1pct_110 = prot_1pct %>%
+  filter(PrecursorCCSz > 109.5 & PrecursorCCSz < 110.5) %>%
+  mutate(Target_CCSz = 110)
+prot_1pct_120 = prot_1pct %>%
+  filter(PrecursorCCSz > 119.5 & PrecursorCCSz < 120.5) %>%
+  mutate(Target_CCSz = 120)
+prot_1pct_130 = prot_1pct %>%
+  filter(PrecursorCCSz > 129.5 & PrecursorCCSz < 130.5) %>%
+  mutate(Target_CCSz = 130)
+prot_1pct_140 = prot_1pct %>%
+  filter(PrecursorCCSz > 139.5 & PrecursorCCSz < 140.5) %>%
+  mutate(Target_CCSz = 140)
+prot_1pct_150 = prot_1pct %>%
+  filter(PrecursorCCSz > 149.5 & PrecursorCCSz < 150.5) %>%
+  mutate(Target_CCSz = 150)
+prot_1pct_160 = prot_1pct %>%
+  filter(PrecursorCCSz > 159.5 & PrecursorCCSz < 160.5) %>%
+  mutate(Target_CCSz = 160)
+prot_1pct_170 = prot_1pct %>%
+  filter(PrecursorCCSz > 169.5 & PrecursorCCSz < 170.5) %>%
+  mutate(Target_CCSz = 170)
+prot_1pct_180 = prot_1pct %>%
+  filter(PrecursorCCSz > 179.5 & PrecursorCCSz < 180.5) %>%
+  mutate(Target_CCSz = 180)
+prot_1pct_190 = prot_1pct %>%
+  filter(PrecursorCCSz > 189.5 & PrecursorCCSz < 190.5) %>%
+  mutate(Target_CCSz = 190)
+prot_1pct_200 = prot_1pct %>%
+  filter(PrecursorCCSz > 199.5 & PrecursorCCSz < 200.5) %>%
+  mutate(Target_CCSz = 200)
+prot_1pct_210 = prot_1pct %>%
+  filter(PrecursorCCSz > 209.5 & PrecursorCCSz < 210.5) %>%
+  mutate(Target_CCSz = 210)
+prot_1pct_220 = prot_1pct %>%
+  filter(PrecursorCCSz > 219.5 & PrecursorCCSz < 220.5) %>%
+  mutate(Target_CCSz = 220)
+prot_1pct_230 = prot_1pct %>%
+  filter(PrecursorCCSz > 229.5 & PrecursorCCSz < 230.5) %>%
+  mutate(Target_CCSz = 230)
+prot_1pct_240 = prot_1pct %>%
+  filter(PrecursorCCSz > 239.5 & PrecursorCCSz < 240.5) %>%
+  mutate(Target_CCSz = 240)
+prot_1pct_250 = prot_1pct %>%
+  filter(PrecursorCCSz > 249.5 & PrecursorCCSz < 250.5) %>%
+  mutate(Target_CCSz = 250)
+prot_1pct_260 = prot_1pct %>%
+  filter(PrecursorCCSz > 259.5 & PrecursorCCSz < 260.5) %>%
+  mutate(Target_CCSz = 260)
+prot_1pct_270 = prot_1pct %>%
+  filter(PrecursorCCSz > 269.5 & PrecursorCCSz < 270.5) %>%
+  mutate(Target_CCSz = 270)
+prot_1pct_280 = prot_1pct %>%
+  filter(PrecursorCCSz > 279.5 & PrecursorCCSz < 280.5) %>%
+  mutate(Target_CCSz = 280)
+prot_1pct_290 = prot_1pct %>%
+  filter(PrecursorCCSz > 289.5 & PrecursorCCSz < 290.5) %>%
+  mutate(Target_CCSz = 290)
+prot_1pct_300 = prot_1pct %>%
+  filter(PrecursorCCSz > 299.5 & PrecursorCCSz < 300.5) %>%
+  mutate(Target_CCSz = 300)
+
+prot_1pct = rbind(prot_1pct_100, prot_1pct_110, prot_1pct_120, prot_1pct_130, prot_1pct_140, prot_1pct_150, prot_1pct_160, prot_1pct_170, prot_1pct_180, prot_1pct_190, prot_1pct_200, prot_1pct_210, prot_1pct_220, prot_1pct_230, prot_1pct_240, prot_1pct_250, prot_1pct_260, prot_1pct_270, prot_1pct_280, prot_1pct_290, prot_1pct_300)
+
+# write.csv(prot_1pct, "prot_1pct_200SPD.csv")
+
+library(ggplot2)
+library(gridExtra)
+grid.newpage()
+
+breaks_y = c(100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300)
+  
+qh = ggplot(prot_1pct, aes(x = PrecursorMz, y = PrecursorCCSz)) +
+  geom_point() +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  theme(plot.margin=unit(c(1,-0.5,1,1), "cm"))
+
+qh.counts = prot_1pct %>%
+  group_by(Target_CCSz) %>%
+  summarise(Total.Prec = n())
+
+qhy = ggplot(qh.counts, aes(x = 1, y = Target_CCSz, fill = Total.Prec)) + 
+  geom_tile() +
+  scale_y_continuous(breaks = breaks_y, labels = breaks_y, limits = c(100, 300)) +
+  scale_fill_viridis(name = "Total.Prec", direction = 1, 
+                     breaks = c(1, 100, 200, 300, 400, 500, 600),
+                     labels = c(1, 100, 200, 300, 400, 500, 600),
+                     limits = c(1, 600)) + 
+  theme(legend.position="right",
+        axis.title=element_text(color="white"),
+        axis.text.x=element_text(color="white"),
+        axis.ticks.x=element_line(color="white"),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.margin=unit(c(1,1,1,-0.5), "cm")) 
+  
+# grid.arrange(h, hy, ncol = 2, nrow = 1)
+
+layt = grid.layout(nrow = 1, ncol = 2, heights = 1, widths = c(6/8,2/8),default.units = c("null", "null"))
+grid.show.layout(layt)
+
+grid.newpage()
+pushViewport(viewport(layout=layt))
+print(h,vp=viewport(layout.pos.row=1,layout.pos.col=1))
+print(hy,vp=viewport(layout.pos.row=1,layout.pos.col=2))
+
+pg <- ggplot_build(hy)
+test = head(pg$data[[1]])
+
+# ggsave(y, filename = "2D_hist_target-mz_vs_prec-ccsz.svg", dpi = "retina")
+```
+
+#Find no. of co-isolated precursors based on RT and M/z (quad & quad+HRIM).
+```{r}
+
+```
+
+#Find no. of co-isolated precursors based on RT and CCS/z (HRIM & quad+HRIM).
+```{r}
+chimers5_hrim = data_hrim %>%
+  filter(Throughput == "200SPD") %>%
+  filter(Peak_Capacity == "1") %>%
+  group_by(Instrument_Mode, Target_CCSz, Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers5_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+    filter(Isolation_Window == "25" & Peak_Capacity == "1") %>%
+    group_by(Instrument_Mode, Target_CCSz, Target_RT) %>%
+    summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+results_ccsz = rbind(chimers5_hrim, chimers5_quim)
+
+write.csv(results_ccsz, "collapsed_ccsz_rt_results_200SPD.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# prot_10amu_300 = prot_10amu %>%
+#   filter(PrecursorMz > 295 & PrecursorMz < 305) %>%
+#   mutate(Target_Mz = 300)
+# prot_10amu_350 = prot_10amu %>%
+#   filter(PrecursorMz > 345 & PrecursorMz < 355) %>%
+#   mutate(Target_Mz = 350)
+# prot_10amu_400 = prot_10amu %>%
+#   filter(PrecursorMz > 395 & PrecursorMz < 405) %>%
+#   mutate(Target_Mz = 400)
+# prot_10amu_450 = prot_10amu %>%
+#   filter(PrecursorMz > 445 & PrecursorMz < 455) %>%
+#   mutate(Target_Mz = 450)
+# prot_10amu_500 = prot_10amu %>%
+#   filter(PrecursorMz > 495 & PrecursorMz < 505) %>%
+#   mutate(Target_Mz = 500)
+# prot_10amu_550 = prot_10amu %>%
+#   filter(PrecursorMz > 545 & PrecursorMz < 555) %>%
+#   mutate(Target_Mz = 550)
+# prot_10amu_600 = prot_10amu %>%
+#   filter(PrecursorMz > 595 & PrecursorMz < 605) %>%
+#   mutate(Target_Mz = 600)
+# prot_10amu_650 = prot_10amu %>%
+#   filter(PrecursorMz > 645 & PrecursorMz < 655) %>%
+#   mutate(Target_Mz = 650)
+# prot_10amu_700 = prot_10amu %>%
+#   filter(PrecursorMz > 695 & PrecursorMz < 702.5) %>%
+#   mutate(Target_Mz = 700)
+# prot_10amu_750 = prot_10amu %>%
+#   filter(PrecursorMz > 745 & PrecursorMz < 755) %>%
+#   mutate(Target_Mz = 750)
+# prot_10amu_800 = prot_10amu %>%
+#   filter(PrecursorMz > 795 & PrecursorMz < 805) %>%
+#   mutate(Target_Mz = 800)
+# prot_10amu_850 = prot_10amu %>%
+#   filter(PrecursorMz > 847.5 & PrecursorMz < 852.5) %>%
+#   mutate(Target_Mz = 850)
+# prot_10amu_900 = prot_10amu %>%
+#   filter(PrecursorMz > 895 & PrecursorMz < 905) %>%
+#   mutate(Target_Mz = 900)
+# prot_10amu_950 = prot_10amu %>%
+#   filter(PrecursorMz > 947.5 & PrecursorMz < 952.5) %>%
+#   mutate(Target_Mz = 950)
+# prot_10amu_1000 = prot_10amu %>%
+#   filter(PrecursorMz > 995 & PrecursorMz < 1005) %>%
+#   mutate(Target_Mz = 1000)
+# prot_10amu_1050 = prot_10amu %>%
+#   filter(PrecursorMz > 1045 & PrecursorMz < 1055) %>%
+#   mutate(Target_Mz = 1050)
+# prot_10amu_1100 = prot_10amu %>%
+#   filter(PrecursorMz > 1097.5 & PrecursorMz < 1102.5) %>%
+#   mutate(Target_Mz = 1100)
+# prot_10amu_1150 = prot_10amu %>%
+#   filter(PrecursorMz > 1145 & PrecursorMz < 1155) %>%
+#   mutate(Target_Mz = 1150)
+# prot_10amu_1200 = prot_10amu %>%
+#   filter(PrecursorMz > 1195 & PrecursorMz < 1205) %>%
+#   mutate(Target_Mz = 1200)
+# prot_10amu_1250 = prot_10amu %>%
+#   filter(PrecursorMz > 1245 & PrecursorMz < 1255) %>%
+#   mutate(Target_Mz = 1250)
+# prot_10amu_1300 = prot_10amu %>%
+#   filter(PrecursorMz > 1295 & PrecursorMz < 1305) %>%
+#   mutate(Target_Mz = 1300)
+# prot_10amu_1350 = prot_10amu %>%
+#   filter(PrecursorMz > 1345 & PrecursorMz < 1355) %>%
+#   mutate(Target_Mz = 1350)
+# prot_10amu_1400 = prot_10amu %>%
+#   filter(PrecursorMz > 1395 & PrecursorMz < 1405) %>%
+#   mutate(Target_Mz = 1400)
+# prot_10amu_1450 = prot_10amu %>%
+#   filter(PrecursorMz > 1447.5 & PrecursorMz < 1452.5) %>%
+#   mutate(Target_Mz = 1450)
+# prot_10amu_1500 = prot_10amu %>%
+#   filter(PrecursorMz > 1495 & PrecursorMz < 1505) %>%
+#   mutate(Target_Mz = 1500)
+# prot_10amu_1550 = prot_10amu %>%
+#   filter(PrecursorMz > 1545 & PrecursorMz < 1555) %>%
+#   mutate(Target_Mz = 1550)
+# prot_10amu_1600 = prot_10amu %>%
+#   filter(PrecursorMz > 1595 & PrecursorMz < 1605) %>%
+#   mutate(Target_Mz = 1600)
+# prot_10amu_1650 = prot_10amu %>%
+#   filter(PrecursorMz > 1645 & PrecursorMz < 1655) %>%
+#   mutate(Target_Mz = 1650)
+# prot_10amu_1700 = prot_10amu %>%
+#   filter(PrecursorMz > 1695 & PrecursorMz < 1705) %>%
+#   mutate(Target_Mz = 1700)
+# prot_10amu_1750 = prot_10amu %>%
+#   filter(PrecursorMz > 1745 & PrecursorMz < 1755) %>%
+#   mutate(Target_Mz = 1750)
+# prot_10amu_1800 = prot_10amu %>%
+#   filter(PrecursorMz > 1795 & PrecursorMz < 1805) %>%
+#   mutate(Target_Mz = 1800)
+# 
+# prot_10amu = rbind(prot_10amu_300, prot_10amu_350, prot_10amu_400, prot_10amu_450, prot_10amu_500, prot_10amu_550, prot_10amu_600, prot_10amu_650, prot_10amu_700, prot_10amu_750, prot_10amu_800, prot_10amu_850, prot_10amu_900, prot_10amu_950, prot_10amu_1000, prot_10amu_1050, prot_10amu_1100, prot_10amu_1150, prot_10amu_1200, prot_10amu_1250, prot_10amu_1300, prot_10amu_1350, prot_10amu_1400, prot_10amu_1450, prot_10amu_1500, prot_10amu_1550, prot_10amu_1600, prot_10amu_1650, prot_10amu_1700, prot_10amu_1750, prot_10amu_1800)
+# 
+# write.csv(prot_10amu, "prot_10amu.csv")
+
+
+
+
+# ggplot(prot_1pct, aes(x = PrecursorMz, y = Target_CCSz)) +
+#   stat_bin2d(binwidth = c(25, 8)) +
+#   theme_classic() +
+#   scale_fill_viridis(name = "% of Library", direction = -1, 
+#                      breaks = c(1, 100, 200, 300, 400), 
+#                      labels = c("0.00025%", "0.02470%", "0.04939%", "0.07409%", "0.09878%"), 
+#                      limits = c(1, 400)) 
+# 
+# ggplot(prot_1pct, aes(x = PrecursorMz, y = Target_CCSz)) +
+#   stat_bin2d(binwidth = c(25, 1)) +
+#   theme_classic() +
+#   scale_fill_viridis(name = "Total Prec", direction = 1)  
+# 
+# ggsave(y, filename = "2D_hist_target-mz_vs_prec-ccsz.svg", dpi = "retina")
+```
+
+
+
+
+
+#Contour plot showing no. of investigated precursors as function of m/z and ccs/z.
+```{r}
+#Set up m/z target df.
+targetmz = seq(300, 1800, by = 50)
+min_mass = (targetmz - (window/2))
+max_mass = (targetmz + (window/2))
+window = 5
+targets_mz = data.frame(targetmz,
+                     min_mass = (targetmz - (window/2)),
+                     max_mass = (targetmz + (window/2)))
+
+#Set up ccs/z target df.
+targetccsz = seq(100, 300, by = 10)
+capacity = 1
+targets_ccsz = data.frame(targetccsz,
+                     min_cross = (targetccsz - (capacity/2)),
+                     max_cross = (targetccsz + (capacity/2)))
+
+#Set up RT target df.
+FWHM_sec = c(10.2, 5.6, 3.2, 2.1, 2.0, 1.4)
+experiment = data.frame(SPD = c("015SPD", "030SPD", "060SPD", "100SPD", "200SPD", "500SPD"),
+                        gradient_min = c(88, 44, 21, 11.5, 5.6, 2.2),
+                        FWHM_min = FWHM_sec/60)
+experiment = experiment %>%
+  mutate(FWHM_norm = FWHM_min/gradient_min)
+fwhm = experiment$FWHM_norm[5]
+targetrt = seq(0.05, 1, by = 0.05)
+targets_rt = data.frame(targetrt,
+                     min_time = (targetrt - (fwhm/2)),
+                     max_time = (targetrt + (fwhm/2)))
+
+#Quad-based isolation (set window size on line 162).
+quad_mz = proteome %>%
+  filter((PrecursorMz > 297.5 & PrecursorMz < 302.5) | (PrecursorMz > 347.5 & PrecursorMz < 352.5) |
+         (PrecursorMz > 397.5 & PrecursorMz < 402.5) | (PrecursorMz > 447.5 & PrecursorMz < 452.5) |
+         (PrecursorMz > 497.5 & PrecursorMz < 502.5) | (PrecursorMz > 547.5 & PrecursorMz < 552.5) |
+         (PrecursorMz > 597.5 & PrecursorMz < 602.5) | (PrecursorMz > 647.5 & PrecursorMz < 652.5) |
+         (PrecursorMz > 697.5 & PrecursorMz < 702.5) | (PrecursorMz > 747.5 & PrecursorMz < 752.5) |
+         (PrecursorMz > 797.5 & PrecursorMz < 802.5) | (PrecursorMz > 847.5 & PrecursorMz < 852.5) |
+         (PrecursorMz > 897.5 & PrecursorMz < 902.5) | (PrecursorMz > 947.5 & PrecursorMz < 952.5) |
+         (PrecursorMz > 997.5 & PrecursorMz < 1002.5) | (PrecursorMz > 1047.5 & PrecursorMz < 1052.5) |
+         (PrecursorMz > 1097.5 & PrecursorMz < 1102.5) | (PrecursorMz > 1147.5 & PrecursorMz < 1152.5) |
+         (PrecursorMz > 1197.5 & PrecursorMz < 1202.5) | (PrecursorMz > 1247.5 & PrecursorMz < 1252.5) |
+         (PrecursorMz > 1297.5 & PrecursorMz < 1302.5) | (PrecursorMz > 1347.5 & PrecursorMz < 1352.5) |
+         (PrecursorMz > 1397.5 & PrecursorMz < 1402.5) | (PrecursorMz > 1447.5 & PrecursorMz < 1452.5) |
+         (PrecursorMz > 1497.5 & PrecursorMz < 1502.5) | (PrecursorMz > 1547.5 & PrecursorMz < 1552.5) |
+         (PrecursorMz > 1597.5 & PrecursorMz < 1602.5) | (PrecursorMz > 1647.5 & PrecursorMz < 1652.5) |
+         (PrecursorMz > 1697.5 & PrecursorMz < 1702.5) | (PrecursorMz > 1747.5 & PrecursorMz < 1752.5) |
+         (PrecursorMz > 1797.5 & PrecursorMz < 1802.5) | (PrecursorMz > 1847.5 & PrecursorMz < 1852.5)) %>%
+  filter((Normalized_RT > 0.04702381 & Normalized_RT < 0.05297619) | (Normalized_RT > 0.09702381 & Normalized_RT < 0.10297619) |
+         (Normalized_RT > 0.14702381 & Normalized_RT < 0.15297619) | (Normalized_RT > 0.19702381 & Normalized_RT < 0.20297619) |
+         (Normalized_RT > 0.24702381 & Normalized_RT < 0.25297619) | (Normalized_RT > 0.29702381 & Normalized_RT < 0.30297619) |
+         (Normalized_RT > 0.34702381 & Normalized_RT < 0.35297619) | (Normalized_RT > 0.39702381 & Normalized_RT < 0.40297619) |
+         (Normalized_RT > 0.44702381 & Normalized_RT < 0.45297619) | (Normalized_RT > 0.49702381 & Normalized_RT < 0.50297619) |
+         (Normalized_RT > 0.54702381 & Normalized_RT < 0.55297619) | (Normalized_RT > 0.59702381 & Normalized_RT < 0.60297619) |
+         (Normalized_RT > 0.64702381 & Normalized_RT < 0.65297619) | (Normalized_RT > 0.69702381 & Normalized_RT < 0.70297619) |
+         (Normalized_RT > 0.74702381 & Normalized_RT < 0.75297619) | (Normalized_RT > 0.79702381 & Normalized_RT < 0.80297619))
+
+test = proteome %>%
+  filter(PrecursorMz > 447.5 & PrecursorMz < 452.5)
+
+		
+	
+
+
+
+
+
+idx_mz = proteome[which(proteome$PrecursorMz > targets_mz$min_25amu & proteome$PrecursorMz < targets_mz$max_25amu),]
+
+idx_mz_ccsz = idx_mz[which(idx_mz$PrecursorCCSz > targets_ccsz$min_10pct & idx_mz$PrecursorCCSz < targets_ccsz$max_10pct),]
+
+idx_mz_ccsz_rt = idx_mz_ccsz[which(idx_mz_ccsz$Normalized_RT > targets_rt$min_time & idx_mz_ccsz$Normalized_RT < targets_rt$max_time),]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Create output to test surface plot of peptide properties.
+```{r}
+chimers1_quad = data_quad %>%
+  group_by(Instrument_Mode, Throughput, Target_Mz, as.character(Isolation_Window), Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers1_hrim = data_hrim %>%
+  mutate(Isolation_Window = Peak_Capacity) %>%
+  select(!contains("Peak")) %>%
+  group_by(Instrument_Mode, Throughput, Target_CCSz, as.character(Isolation_Window), Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers1_quim = data_quim %>%
+  mutate(Isolation_Window = paste(Isolation_Window, Peak_Capacity, sep = "_")) %>%
+  group_by(Instrument_Mode, Throughput, Target_Mz, Target_CCSz, as.character(Isolation_Window), Target_RT) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+results = rbind(chimers1_quad, chimers1_hrim, chimers1_quim)
+names(results)[names(results) == "as.character(Isolation_Window)"] = "Isolation_Window"
+
+
+
+library(plotly)
+library(ggplot2)
+test = results %>%
+  filter(Throughput == "200SPD" & Instrument_Mode == "HRIM" & Isolation_Window == "10") %>%
+  group_by(Target_CCSz, Target_RT) %>%
+  summarise(Total.Prec = sum(Total.Prec))
+
+plot_ly(x = test$Target_Mz, y = test$Target_RT, z = test$Total.Prec, type = "surface", contours = test$Total.Prec)
+
+ggplot(test, aes(x = test$Target_Mz, y = test$Target_CCSz, z = test$Total.Prec)) +
+  geom_contour_filled()
+
+write.csv(test, "test_data_for_3d_plot.csv")
+
+```
+
+
+
+
+
+```{r}
+ggplot(results, aes(x = Throughput, y = Total.Prec, color = Instrument_Mode, size = Isolation_Window)) +
+  geom_point() +
+  scale_y_continuous(trans = 'log10') +
+  theme_classic() +
+  scale_color_discrete(name = "Isolation Window")
+```
+
+
+```{r}
+chimers5_hrim = data_hrim %>%
+  filter(Throughput == "200SPD") %>%
+  filter(Peak_Capacity == 3) %>%
+  group_by(Instrument_Mode, Target_CCSz, as.character(Peak_Capacity)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+chimers5_quim = data_quim %>%
+  filter(Throughput == "200SPD") %>%
+  mutate(Peak_Capacity = paste(Isolation_Window, Peak_Capacity, sep = "_")) %>%
+  filter(Peak_Capacity == "25_10") %>%
+  group_by(Instrument_Mode, Target_CCSz, Target_Mz, as.character(Peak_Capacity)) %>%
+  summarise(Total.Prec = sum(as.numeric(No_of_Precursors)))
+
+test_175 = rbind(chimers5_hrim, chimers5_quim)
+names(test_175)[names(test_175) == "as.character(Peak_Capacity)"] = "Peak_Capacity"
+
+test_175[is.na(test_175)] = 1000
+
+ggplot(test_175, aes(x = Target_Mz, y = Target_CCSz, shape = Instrument_Mode, color = Total.Prec)) +
+  facet_wrap(~Instrument_Mode, nrow = 1, ncol = 2) +
+  geom_point() +
+  theme_classic() +
+  scale_color_viridis(name = "No. of Precursors", direction = -1)
+```
+
+```{r}
+check_400 = proteome %>%
+  filter(PrecursorMz > 390 & PrecursorMz < 410) %>%
+  filter((PrecursorCCSz > 120 & PrecursorCCSz < 130) | (PrecursorCCSz > 145 & PrecursorCCSz < 155) | (PrecursorCCSz > 170 & PrecursorCCSz < 180))
+
+# test_mz[is.na(test_mz)] = 1000
+
+ggplot(test_175, aes(x = Target_Mz, y = Target_CCSz, shape = Instrument_Mode, color = Total.Prec)) +
+  facet_wrap(~Instrument_Mode, nrow = 1, ncol = 2) +
+  geom_point() +
+  theme_classic() +
+  scale_color_viridis(name = "No. of Precursors", direction = -1)
+```

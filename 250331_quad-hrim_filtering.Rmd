@@ -1,0 +1,145 @@
+---
+title: "Untitled"
+author: "Isabel Uribe"
+date: "2025-03-31"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+
+#Quad-based parameters
+# windows = c(2, 25)
+windows = 25
+
+targetmz = seq(300, 1800, by = 50)
+
+#HRIM-based parameters
+# capacities = c(1, 3, 5, 10)
+capacities = 1
+
+targetccsz = targetccsz = seq(100, 300, by = 10)
+
+#LC parameters
+# FWHM_sec = c(10.2, 5.6, 3.2, 2.1, 2.0, 1.4)
+# experiment = data.frame(SPD = c("015SPD", "030SPD", "060SPD", "100SPD", "200SPD", "500SPD"),
+#                         gradient_min = c(88, 44, 21, 11.5, 5.6, 2.2),
+#                         FWHM = FWHM_sec/60)
+# experiment = experiment %>%
+#   mutate(FWHM_norm = FWHM/gradient_min)
+
+#reset for 2d histogram analysis
+FWHM_sec = c(2.0)
+experiment = data.frame(SPD = c("200SPD"),
+                        gradient_min = c(5.6),
+                        FWHM = FWHM_sec/60)
+experiment = experiment %>%
+  mutate(FWHM_norm = FWHM/gradient_min)
+
+targetrt = seq(0.1, 0.8, by = 0.05)
+```
+
+
+```{r}
+#Read in peptide library.
+library(readr)
+library(tidyverse)
+
+proteome = read_tsv("human_proteome_predicted_CCSz_RT.tsv")
+
+#QUAD-HRIM Filtering
+result_quad_hrim = data.frame(matrix(nrow = 0, ncol = 7))
+
+pt_window = c() 
+pt_mz = c()
+
+pt_capacity = c()
+pt_ccsz = c()
+
+pt_experiment = c()
+pt_time = c()
+
+pt_no.prec = c()
+
+subset_ids = list()
+
+#Set up progress bar for iterations over quad isolation windows
+n_iter_windows = length(windows)
+pb_windows <- winProgressBar(title = "isolation window iterations", 
+                           label = "Percentage Completed", min = 0, max = n_iter_windows, 
+                           initial = 0, width = 600L)
+
+for (f in 1:n_iter_windows) {
+  for (g in 1:length(targetmz)) {
+    
+    min_mz = targetmz[g] - (windows[f]/2)
+    max_mz = targetmz[g] + (windows[f]/2)
+    
+    subset_mz = proteome %>%
+      filter(PrecursorMz > min_mz & PrecursorMz < max_mz)
+    
+    #Set up progress bar for iterations over quad isolation windows
+    n_iter_capacities = length(capacities)
+    pb_capacities <- winProgressBar(title = "peak capacity iterations", 
+                           label = "Percentage Completed", min = 0, max = n_iter_capacities, 
+                           initial = 0, width = 500L)
+    
+    for (h in 1:n_iter_capacities) {
+      for (i in 1:length(targetccsz)) {
+        
+        min_ccsz = targetccsz[i] - (capacities[h]/2)
+        max_ccsz = targetccsz[i] + (capacities[h]/2)
+        
+        subset_mz_ccsz = subset_mz %>%
+          filter(PrecursorCCSz > min_ccsz & PrecursorCCSz < max_ccsz)
+        
+        for (j in 1:nrow(experiment)) {
+          
+          spd <- experiment[j, 1]
+          gl <- experiment[experiment$SPD == spd, 2]
+          fwhm <- experiment[experiment$SPD == spd, 3]
+          fwhm_norm = fwhm / gl
+          
+          for (k in 1:length(targetrt)) {
+            
+            min_RT = targetrt[k] - (fwhm_norm/2)
+            max_RT = targetrt[k] + (fwhm_norm/2)
+            
+            subset_mz_ccsz_rt = subset_mz_ccsz %>%
+              filter(Normalized_RT > min_RT & Normalized_RT < max_RT)
+            
+            no.precursors = nrow(subset_mz_ccsz_rt)
+            
+            subset_ids <- c(subset_ids, as.character(subset_mz_ccsz_rt$id))
+            
+            pt_window = append(pt_window, windows[f]) 
+            pt_mz = append(pt_mz, targetmz[g])
+            pt_capacity = append(pt_capacity, capacities[h])
+            pt_ccsz = append(pt_ccsz, targetccsz[i])
+            pt_experiment = append(pt_experiment, spd)
+            pt_time = append(pt_time, targetrt[k])
+            pt_no.prec = append(pt_no.prec, no.precursors)
+            
+          }
+        }
+      }
+      pctg_capacities = paste(round(h/n_iter_capacities * 100, 0), "% completed")
+      setWinProgressBar(pb_capacities, h, label = pctg_capacities)
+    }
+    close(pb_capacities)
+  }
+  pctg_windows = paste(round(f/n_iter_windows * 100, 0), "% completed")
+  setWinProgressBar(pb_windows, f, label = pctg_windows)
+}
+close(pb_windows)
+
+result_quad_hrim = data.frame(cbind(pt_window, as.numeric(pt_mz), pt_capacity, as.numeric(pt_ccsz), pt_experiment, 
+                                    as.numeric(pt_time), as.numeric(pt_no.prec)))
+
+colnames(result_quad_hrim) = c("Isolation_Window", "Target_Mz", "Peak_Capacity", "Target_CCSz", "Throughput", "Target_RT", "No_of_Precursors")
+
+library(rlist)
+list.save(subset_ids, "quad-hrim_ids_25amu-1pct_200SPD.rdata")
+
+# write_tsv(result_quad_hrim, "chimeric_results_quad-hrim.tsv")
+```

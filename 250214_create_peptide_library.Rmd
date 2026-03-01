@@ -1,0 +1,68 @@
+---
+title: "Untitled"
+author: "Isabel Uribe"
+date: "2025-02-13"
+output: html_document
+---
+
+```{r}
+library(data.table)
+
+# Read in the TSV file 
+DT <- fread("predict.speclib.tsv") 
+  
+# Print the first few rows of the data table 
+head(DT) 
+```
+```{r}
+library(tidyverse)
+
+predcited_library = DT %>%
+  group_by(ProteinID, StrippedPeptide, ModifiedPeptide, PrecursorCharge, PrecursorMz, RT, IonMobility) %>%
+  distinct(PrecursorMz)
+
+write_tsv(predcited_library, "predicted_library_human_proteome.tsv")
+```
+
+#Create csv file with modified sequence and precursor charge for CCS prediction model.
+```{r}
+library(readr)
+library(tidyverse)
+
+proteome = read_tsv("predicted_library_human_proteome.tsv")
+
+df_CCS = read.csv("Supplementary_Data_1.csv")
+colnames(df_CCS) = c("id", "StrippedPeptide", "PrecursorCharge")
+
+df_RT = proteome %>%
+  select(ProteinID, StrippedPeptide, ModifiedPeptide, PrecursorCharge, PrecursorMz, RT) %>%
+  filter(!str_detect(ModifiedPeptide, "Carbamidomethyl")) %>%
+  filter(!str_detect(ModifiedPeptide, "Acetyl")) %>%
+  filter(!str_detect(ModifiedPeptide, "Oxidation"))
+
+df = inner_join(df_CCS, df_RT, by = c("StrippedPeptide", "PrecursorCharge"))
+df_2 = anti_join(df_CCS, df_RT, by = c("StrippedPeptide", "PrecursorCharge"))
+colnames(df) = c("id", "StrippedPeptide", "PrecursorCharge", "CCS", "ProteinID", "ModifiedPeptide", "PrecursorMz", "Normalized_RT")
+colnames(df_2) = c("id", "StrippedPeptide", "PrecursorCharge", "CCS")
+
+df = df %>% 
+  mutate(PrecursorCCSz = CCS / PrecursorCharge) %>%
+  select(!contains("Modified"))
+
+write_tsv(df, "human_proteome_predicted_CCSz_RT.tsv")
+write_tsv(df_2, "CCSpeptides_not_included.tsv")
+```
+
+#Prepare data for DeepCrossSectionalCollision model.
+```{r}
+#change notation of modifications: [Acetyl] to (ac) and [Oxidation] to (ox)
+# modpep_1 = str_replace_all(df$ModifiedPeptide, "\\[Acetyl\\]", "\\(ac\\)")
+# modpep_2 = str_replace_all(modpep_1, "\\[Oxidation\\]", "\\(ox\\)")
+# df$ModifiedPeptide = modpep_2
+# 
+# #change column names
+# colnames(df) = c("Modified sequence", "Charge")
+# 
+# #write csv file
+# write.csv(df, "human_proteome_reduced.csv")
+```
